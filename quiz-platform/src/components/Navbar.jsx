@@ -4,11 +4,11 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import AdminLogin from '../pages/AdminLogin';
 
-export default function Navbar() {
+export default function Navbar({ fullName }) {
   const navigate = useNavigate();
 
   // Get user info from Redux
-  const { fullName, role } = useSelector((state) => state.auth || {});
+  const { role } = useSelector((state) => state.auth || {});
 
 const handleCreateClick = () => {
   if (role?.toLowerCase() === 'admin') {

@@ -46,10 +46,11 @@ export default function PlayQuiz({ setFullName }) {
             onChange={e => setName(e.target.value)}
           />
           <Button onClick={() => {
-            if(name.length < 5 || name.length > 50) return alert('Full name must be 5-50 chars');
-            setFullName(name);
+           if(name.length < 5 || name.length > 50) return alert('Full name must be 5-50 chars');
+            setFullName(name); // updates App.js state
             setStarted(true);
-          }}>Start Quiz</Button>
+            }}>Start Quiz</Button>
+
         </Box>
       ) : (
         <Card>
