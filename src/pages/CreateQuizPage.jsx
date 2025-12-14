@@ -13,13 +13,16 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { useDispatch, useSelector } from "react-redux";
 import { addQuizzes, updateQuiz } from "../features/quizzes/actions";
 import { useNavigate, useParams } from "react-router-dom";
+import {
+  loadFromLocalStorage,
+  saveToLocalStorage,
+} from "../utils/localStorage";
 
-// id generator
+/* ---------- helpers ---------- */
 function uid() {
   return Math.random().toString(36).slice(2, 9);
 }
 
-// empty question
 function emptyQuestion() {
   return {
     id: uid(),
@@ -29,8 +32,9 @@ function emptyQuestion() {
   };
 }
 
+/* ---------- component ---------- */
 export default function CreateQuizPage() {
-  const { id } = useParams(); // 👈 edit mode if id exists
+  const { id } = useParams(); // edit mode if id exists
   const quizzes = useSelector((s) => s.quizzes.items || []);
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -39,7 +43,15 @@ export default function CreateQuizPage() {
   const [type, setType] = useState("mcq-single");
   const [questions, setQuestions] = useState([emptyQuestion()]);
 
-  // LOAD QUIZ IF EDIT MODE
+  /* ---------- ADMIN LOGIN CHECK ---------- */
+  useEffect(() => {
+    const isLoggedIn = loadFromLocalStorage("is_logged_in");
+    if (isLoggedIn !== true) {
+      navigate("/login");
+    }
+  }, [navigate]);
+
+  /* ---------- LOAD QUIZ FOR EDIT ---------- */
   useEffect(() => {
     if (id) {
       const quiz = quizzes.find((q) => q.id === id);
@@ -51,26 +63,30 @@ export default function CreateQuizPage() {
     }
   }, [id, quizzes]);
 
-  // add question
+  /* ---------- LOGOUT ---------- */
+  const handleAdminLogout = () => {
+    saveToLocalStorage("is_logged_in", false);
+    navigate("/");
+  };
+
+  /* ---------- QUESTION HANDLERS ---------- */
   const addQuestion = () => {
     setQuestions([...questions, emptyQuestion()]);
   };
 
-  // add option
   const addOption = (qIndex) => {
     const copy = [...questions];
     copy[qIndex].options.push("");
     setQuestions(copy);
   };
 
-  // delete option
   const deleteOption = (qIndex, optIndex) => {
     const copy = [...questions];
     copy[qIndex].options.splice(optIndex, 1);
     setQuestions(copy);
   };
 
-  // save quiz
+  /* ---------- SAVE QUIZ ---------- */
   const saveQuiz = () => {
     if (!title.trim()) {
       alert("Enter quiz title");
@@ -97,12 +113,24 @@ export default function CreateQuizPage() {
     navigate("/my-quizzes");
   };
 
+  /* ---------- UI ---------- */
   return (
     <Box>
+      {/* ADMIN LOGOUT */}
+      <Button
+        variant="outlined"
+        color="error"
+        sx={{ mb: 2 }}
+        onClick={handleAdminLogout}
+      >
+        Admin Logout
+      </Button>
+
       <Typography variant="h5" sx={{ mb: 2 }}>
         {id ? "Edit Quiz" : "Create Quiz"}
       </Typography>
 
+      {/* QUIZ TITLE */}
       <TextField
         label="Quiz Title"
         fullWidth
@@ -111,6 +139,7 @@ export default function CreateQuizPage() {
         onChange={(e) => setTitle(e.target.value)}
       />
 
+      {/* QUIZ TYPE */}
       <Select
         value={type}
         onChange={(e) => setType(e.target.value)}
@@ -120,6 +149,7 @@ export default function CreateQuizPage() {
         <MenuItem value="mcq-multiple">MCQ (Multiple)</MenuItem>
       </Select>
 
+      {/* QUESTIONS */}
       {questions.map((q, qIndex) => (
         <Paper key={q.id} sx={{ p: 2, mb: 2 }}>
           <TextField
