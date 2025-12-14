@@ -33,7 +33,7 @@ export default function Login() {
 
     //  ADMIN CREDENTIAL CHECK
     if (email === ADMIN.email && password === ADMIN.password) {
-      saveToLocalStorage("is_logged_in", true);
+      saveToLocalStorage("is_logged_in", "true");
       alert("Login successful");
       nav("/create");
     } else {

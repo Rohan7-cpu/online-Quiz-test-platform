@@ -8,27 +8,26 @@ import {
   IconButton,
   Select,
   MenuItem,
+  Checkbox,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useDispatch, useSelector } from "react-redux";
 import { addQuizzes, updateQuiz } from "../features/quizzes/actions";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  loadFromLocalStorage,
-  saveToLocalStorage,
-} from "../utils/localStorage";
+import { loadFromLocalStorage } from "../utils/localStorage";
 
 /* ---------- helpers ---------- */
 function uid() {
   return Math.random().toString(36).slice(2, 9);
 }
 
-function emptyQuestion() {
+function createQuestion(type) {
   return {
     id: uid(),
     question: "",
-    options: ["", ""],
-    correct: 0,
+    options: type.startsWith("mcq") ? ["", ""] : [],
+    correct: type === "mcq-multiple" ? [] : 0,
+    answer: "",
   };
 }
 
@@ -41,15 +40,17 @@ export default function CreateQuizPage() {
 
   const [title, setTitle] = useState("");
   const [type, setType] = useState("mcq-single");
-  const [questions, setQuestions] = useState([emptyQuestion()]);
+  const [questions, setQuestions] = useState([createQuestion("mcq-single")]);
 
-  /* ---------- ADMIN LOGIN CHECK ---------- */
+  /* ---------- ADMIN LOGIN CHECK (ONLY FOR CREATE) ---------- */
   useEffect(() => {
-    const isLoggedIn = loadFromLocalStorage("is_logged_in");
-    if (isLoggedIn !== true) {
-      navigate("/login");
+    if (!id) {
+      const isLoggedIn = loadFromLocalStorage("is_logged_in");
+      if (isLoggedIn !== "true") {
+        navigate("/login");
+      }
     }
-  }, [navigate]);
+  }, [id, navigate]);
 
   /* ---------- LOAD QUIZ FOR EDIT ---------- */
   useEffect(() => {
@@ -63,15 +64,16 @@ export default function CreateQuizPage() {
     }
   }, [id, quizzes]);
 
-  /* ---------- LOGOUT ---------- */
-  const handleAdminLogout = () => {
-    saveToLocalStorage("is_logged_in", false);
-    navigate("/");
-  };
+  /* ---------- RESET QUESTIONS WHEN TYPE CHANGES (ONLY CREATE) ---------- */
+  useEffect(() => {
+    if (!id) {
+      setQuestions([createQuestion(type)]);
+    }
+  }, [type, id]);
 
   /* ---------- QUESTION HANDLERS ---------- */
   const addQuestion = () => {
-    setQuestions([...questions, emptyQuestion()]);
+    setQuestions([...questions, createQuestion(type)]);
   };
 
   const addOption = (qIndex) => {
@@ -116,16 +118,6 @@ export default function CreateQuizPage() {
   /* ---------- UI ---------- */
   return (
     <Box>
-      {/* ADMIN LOGOUT */}
-      <Button
-        variant="outlined"
-        color="error"
-        sx={{ mb: 2 }}
-        onClick={handleAdminLogout}
-      >
-        Admin Logout
-      </Button>
-
       <Typography variant="h5" sx={{ mb: 2 }}>
         {id ? "Edit Quiz" : "Create Quiz"}
       </Typography>
@@ -139,14 +131,17 @@ export default function CreateQuizPage() {
         onChange={(e) => setTitle(e.target.value)}
       />
 
-      {/* QUIZ TYPE */}
+      {/* QUESTION TYPE */}
       <Select
+        fullWidth
         value={type}
         onChange={(e) => setType(e.target.value)}
         sx={{ mb: 2 }}
       >
-        <MenuItem value="mcq-single">MCQ (Single)</MenuItem>
-        <MenuItem value="mcq-multiple">MCQ (Multiple)</MenuItem>
+        <MenuItem value="mcq-single">MCQ (Single Correct)</MenuItem>
+        <MenuItem value="mcq-multiple">MCQ (Multiple Correct)</MenuItem>
+        <MenuItem value="short-answer">Short Answer</MenuItem>
+        <MenuItem value="description">Description</MenuItem>
       </Select>
 
       {/* QUESTIONS */}
@@ -164,43 +159,101 @@ export default function CreateQuizPage() {
             }}
           />
 
-          {q.options.map((opt, optIndex) => (
-            <Box key={optIndex} sx={{ display: "flex", gap: 1, mt: 1 }}>
-              <TextField
-                fullWidth
-                value={opt}
-                onChange={(e) => {
-                  const copy = [...questions];
-                  copy[qIndex].options[optIndex] = e.target.value;
-                  setQuestions(copy);
-                }}
-              />
+          {/* MCQ OPTIONS */}
+          {type.startsWith("mcq") &&
+            q.options.map((opt, optIndex) => (
+              <Box key={optIndex} sx={{ display: "flex", gap: 1, mt: 1 }}>
+                <TextField
+                  fullWidth
+                  value={opt}
+                  onChange={(e) => {
+                    const copy = [...questions];
+                    copy[qIndex].options[optIndex] = e.target.value;
+                    setQuestions(copy);
+                  }}
+                />
+                <IconButton onClick={() => deleteOption(qIndex, optIndex)}>
+                  <DeleteIcon />
+                </IconButton>
+              </Box>
+            ))}
 
-              <IconButton onClick={() => deleteOption(qIndex, optIndex)}>
-                <DeleteIcon />
-              </IconButton>
+          {/* MCQ CONTROLS */}
+          {type.startsWith("mcq") && (
+            <Box sx={{ mt: 1 }}>
+              <Button onClick={() => addOption(qIndex)}>Add Option</Button>
+
+              {/* SINGLE CORRECT */}
+              {type === "mcq-single" && (
+                <Select
+                  value={q.correct}
+                  onChange={(e) => {
+                    const copy = [...questions];
+                    copy[qIndex].correct = Number(e.target.value);
+                    setQuestions(copy);
+                  }}
+                  sx={{ ml: 2 }}
+                >
+                  {q.options.map((_, i) => (
+                    <MenuItem key={i} value={i}>
+                      Correct Option {i + 1}
+                    </MenuItem>
+                  ))}
+                </Select>
+              )}
+
+              {/* MULTIPLE CORRECT */}
+              {type === "mcq-multiple" &&
+                q.options.map((_, i) => (
+                  <Box key={i}>
+                    <Checkbox
+                      checked={q.correct.includes(i)}
+                      onChange={(e) => {
+                        const copy = [...questions];
+                        const arr = copy[qIndex].correct;
+                        copy[qIndex].correct = e.target.checked
+                          ? [...arr, i]
+                          : arr.filter((x) => x !== i);
+                        setQuestions(copy);
+                      }}
+                    />
+                    Option {i + 1}
+                  </Box>
+                ))}
             </Box>
-          ))}
+          )}
 
-          <Box sx={{ mt: 1 }}>
-            <Button onClick={() => addOption(qIndex)}>Add Option</Button>
-
-            <Select
-              value={q.correct}
+          {/* SHORT ANSWER */}
+          {type === "short-answer" && (
+            <TextField
+              fullWidth
+              label="Correct Answer"
+              sx={{ mt: 1 }}
+              value={q.answer}
               onChange={(e) => {
                 const copy = [...questions];
-                copy[qIndex].correct = Number(e.target.value);
+                copy[qIndex].answer = e.target.value;
                 setQuestions(copy);
               }}
-              sx={{ ml: 2 }}
-            >
-              {q.options.map((_, i) => (
-                <MenuItem key={i} value={i}>
-                  Correct Option {i + 1}
-                </MenuItem>
-              ))}
-            </Select>
-          </Box>
+            />
+          )}
+
+          {/* DESCRIPTION */}
+          {type === "description" && (
+            <TextField
+              fullWidth
+              multiline
+              rows={4}
+              label="Answer (Description)"
+              sx={{ mt: 1 }}
+              value={q.answer}
+              onChange={(e) => {
+                const copy = [...questions];
+                copy[qIndex].answer = e.target.value;
+                setQuestions(copy);
+              }}
+            />
+          )}
         </Paper>
       ))}
 

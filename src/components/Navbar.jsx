@@ -28,7 +28,8 @@ useEffect(() => {
   //  KEEP THIS LOGIC (ADMIN LOGIN)
   const handleCreateClick = () => {
     const isLoggedIn = loadFromLocalStorage("is_logged_in");
-    navigate(isLoggedIn === true ? "/create" : "/login");
+     navigate(isLoggedIn === "true" ? "/create" : "/login");
+ 
   };
 
   // ✅ PLAYER LOGOUT ONLY
