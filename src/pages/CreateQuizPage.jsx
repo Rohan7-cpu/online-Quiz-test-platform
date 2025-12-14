@@ -1,15 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  Box,
-  TextField,
-  Button,
-  Typography,
-  Paper,
-  IconButton,
-  Select,
-  MenuItem,
-  Checkbox,
-} from "@mui/material";
+import {Box,TextField,Button,Typography,Paper,IconButton,Select,MenuItem,Checkbox,} from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useDispatch, useSelector } from "react-redux";
 import { addQuizzes, updateQuiz } from "../features/quizzes/actions";
@@ -52,19 +42,25 @@ export default function CreateQuizPage() {
     }
   }, [id, navigate]);
 
-  /* ---------- LOAD QUIZ FOR EDIT ---------- */
+  /* ---------- LOAD QUIZ FOR EDIT  ---------- */
   useEffect(() => {
     if (id) {
       const quiz = quizzes.find((q) => q.id === id);
       if (quiz) {
         setTitle(quiz.title);
         setType(quiz.type);
-        setQuestions(quiz.questions);
+        setQuestions(
+          quiz.questions.map((q) => ({
+            ...q,
+            options: q.options ? [...q.options] : [],
+            correct: Array.isArray(q.correct) ? [...q.correct] : q.correct,
+          }))
+        );
       }
     }
   }, [id, quizzes]);
 
-  /* ---------- RESET QUESTIONS WHEN TYPE CHANGES (ONLY CREATE) ---------- */
+  /* ---------- RESET QUESTIONS WHEN TYPE CHANGES  ---------- */
   useEffect(() => {
     if (!id) {
       setQuestions([createQuestion(type)]);
@@ -73,33 +69,48 @@ export default function CreateQuizPage() {
 
   /* ---------- QUESTION HANDLERS ---------- */
   const addQuestion = () => {
-    setQuestions([...questions, createQuestion(type)]);
+    setQuestions((prev) => [...prev, createQuestion(type)]);
   };
 
   const addOption = (qIndex) => {
-    const copy = [...questions];
-    copy[qIndex].options.push("");
-    setQuestions(copy);
+    setQuestions((prev) =>
+      prev.map((q, i) =>
+        i === qIndex ? { ...q, options: [...q.options, ""] } : q
+      )
+    );
   };
 
   const deleteOption = (qIndex, optIndex) => {
-    const copy = [...questions];
-    copy[qIndex].options.splice(optIndex, 1);
-    setQuestions(copy);
+    setQuestions((prev) =>
+      prev.map((q, i) =>
+        i === qIndex
+          ? {
+              ...q,
+              options: q.options.filter((_, oi) => oi !== optIndex),
+            }
+          : q
+      )
+    );
   };
 
-  /* ---------- SAVE QUIZ ---------- */
+  /* ---------- SAVE QUIZ  ---------- */
   const saveQuiz = () => {
     if (!title.trim()) {
       alert("Enter quiz title");
       return;
     }
 
+    const safeQuestions = questions.map((q) => ({
+      ...q,
+      options: q.options ? [...q.options] : [],
+      correct: Array.isArray(q.correct) ? [...q.correct] : q.correct,
+    }));
+
     const quiz = {
       id: id || uid(),
       title,
       type,
-      questions,
+      questions: safeQuestions,
       active: true,
       createdAt: new Date().toISOString(),
     };
@@ -153,9 +164,12 @@ export default function CreateQuizPage() {
             sx={{ mb: 1 }}
             value={q.question}
             onChange={(e) => {
-              const copy = [...questions];
-              copy[qIndex].question = e.target.value;
-              setQuestions(copy);
+              const value = e.target.value;
+              setQuestions((prev) =>
+                prev.map((x, i) =>
+                  i === qIndex ? { ...x, question: value } : x
+                )
+              );
             }}
           />
 
@@ -167,9 +181,19 @@ export default function CreateQuizPage() {
                   fullWidth
                   value={opt}
                   onChange={(e) => {
-                    const copy = [...questions];
-                    copy[qIndex].options[optIndex] = e.target.value;
-                    setQuestions(copy);
+                    const value = e.target.value;
+                    setQuestions((prev) =>
+                      prev.map((x, i) =>
+                        i === qIndex
+                          ? {
+                              ...x,
+                              options: x.options.map((o, oi) =>
+                                oi === optIndex ? value : o
+                              ),
+                            }
+                          : x
+                      )
+                    );
                   }}
                 />
                 <IconButton onClick={() => deleteOption(qIndex, optIndex)}>
@@ -188,9 +212,12 @@ export default function CreateQuizPage() {
                 <Select
                   value={q.correct}
                   onChange={(e) => {
-                    const copy = [...questions];
-                    copy[qIndex].correct = Number(e.target.value);
-                    setQuestions(copy);
+                    const value = Number(e.target.value);
+                    setQuestions((prev) =>
+                      prev.map((x, i) =>
+                        i === qIndex ? { ...x, correct: value } : x
+                      )
+                    );
                   }}
                   sx={{ ml: 2 }}
                 >
@@ -209,12 +236,16 @@ export default function CreateQuizPage() {
                     <Checkbox
                       checked={q.correct.includes(i)}
                       onChange={(e) => {
-                        const copy = [...questions];
-                        const arr = copy[qIndex].correct;
-                        copy[qIndex].correct = e.target.checked
-                          ? [...arr, i]
-                          : arr.filter((x) => x !== i);
-                        setQuestions(copy);
+                        const checked = e.target.checked;
+                        setQuestions((prev) =>
+                          prev.map((x, qi) => {
+                            if (qi !== qIndex) return x;
+                            const updated = checked
+                              ? [...x.correct, i]
+                              : x.correct.filter((v) => v !== i);
+                            return { ...x, correct: updated };
+                          })
+                        );
                       }}
                     />
                     Option {i + 1}
@@ -231,9 +262,12 @@ export default function CreateQuizPage() {
               sx={{ mt: 1 }}
               value={q.answer}
               onChange={(e) => {
-                const copy = [...questions];
-                copy[qIndex].answer = e.target.value;
-                setQuestions(copy);
+                const value = e.target.value;
+                setQuestions((prev) =>
+                  prev.map((x, i) =>
+                    i === qIndex ? { ...x, answer: value } : x
+                  )
+                );
               }}
             />
           )}
@@ -248,9 +282,12 @@ export default function CreateQuizPage() {
               sx={{ mt: 1 }}
               value={q.answer}
               onChange={(e) => {
-                const copy = [...questions];
-                copy[qIndex].answer = e.target.value;
-                setQuestions(copy);
+                const value = e.target.value;
+                setQuestions((prev) =>
+                  prev.map((x, i) =>
+                    i === qIndex ? { ...x, answer: value } : x
+                  )
+                );
               }}
             />
           )}
