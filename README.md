@@ -1,4 +1,5 @@
 # Online Quiz Test Platform
+REFER TO CONFIG AND INSIDE THAT SEE ADMIN.JS FOR ADMIN LOGIN DETAILS
 
 A React-based quiz application where:
 - Admin can create quizzes
